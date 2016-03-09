@@ -56,28 +56,39 @@ SynthDef(\AudioIn, {
 ~recorder = {
 
 // different buffer for multiple loops
-arg buffer, cut = true, random;
+arg buffer, chop = true, random = false;
 var numPieces, duration, offset, record, bufferLength, routine;
 
 	bufferLength = buffer.numFrames;
 
-	//amount of sound snippets
-	numPieces = [4, 6, 8, 12, 16, 32].choose;
-	("numPieces:" + numPieces).postln;
+	if(chop == true, {
+		//chopped recording
+		//amount of sound snippets
+		numPieces = [4, 6, 8, 12, 16, 32].choose;
+		("numPieces:" + numPieces).postln;
 
-	//duration of each sound snippet and break inbetween
-	duration = (0.5 * bufferLength / numPieces).floor;
+		//duration of each sound snippet and break inbetween
+		duration = (0.5 * bufferLength / numPieces).floor;
 
-	routine = Routine{
-		for (0, numPieces, {
-			arg i;
-			offset = i * 2 * duration;
-			record = Synth(\recBuf, [\out, 0, \bufnum, buffer.bufnum, \offset, offset]);
-			(duration/44100).wait;
+		routine = Routine{
+			for (0, numPieces, {
+				arg i;
+				offset = i * 2 * duration;
+				record = Synth(\recBuf, [\out, 0, \bufnum, buffer.bufnum, \offset, offset]);
+				(duration/44100).wait;
+				record.run(false);
+			});
+			"recording finished".postln;
+		}.play;
+	},{
+		//unchopped recording
+		routine = Routine{
+			record = Synth(\recBuf, [\out, 0, \bufnum, buffer.bufnum]);
+			(bufferLength/44100).wait;
 			record.run(false);
+			"recording finished".postln;
+		}.play;
 	});
-	"record finished".postln;
-	}.play
 
 };
 )
@@ -105,7 +116,8 @@ var numPieces, duration, offset, record, bufferLength, routine;
 ~loop2Play.free;
 
 // record loops
-~recorder.value(~loop1);
+~recorder.value(~loop1, true);
+~recorder.value(~loop1, false);
 ~recorder.value(~loop2);
 
 // other input
