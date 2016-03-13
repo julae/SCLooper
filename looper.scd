@@ -1,4 +1,4 @@
-// For life performance to redundantize my loop pedal. Because it is heavy.
+// For life performances to redundantize my loop pedal. Because it is heavy.
 //
 //
 //     helper Synths for recording to /  playing from buffer
@@ -24,7 +24,7 @@ SynthDef(\playBuf,{
 	arg out = 0, bufnum;
 	var signal;
 	signal = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum), loop: 1);
-	Out.ar(out, signal);
+	Out.ar([out, out+1], signal);
 }).add;
 
 
@@ -33,19 +33,19 @@ SynthDef(\pitchCake,{
 	arg out, bus;
     var in, amp, sound, effect, freq, hasFreq;
 	in = Mix.new(SoundIn.ar([0,1]));
-    amp = Amplitude.kr(in, 0.05, 0.05, 0.8);
+    amp = Amplitude.kr(in, 0.05, 0.05, 0.5);
     # freq, hasFreq = Pitch.kr(in, ampThreshold: 0.02, median: 7);
 	sound = Mix.new(LFSaw.ar([0.333, 0.5] * freq) + LFPulse.ar([0.333, 0.5] * freq) * amp);
 	effect = LinPan2.ar(LPF.ar(sound, SinOsc.kr(0.5, 0, 100, 400), SinOsc.kr(1, 0, 1)));
-    Out.ar(out, effect);
-	Out.ar([bus, bus+1], effect);
+	Out.ar(out, effect);
+	Out.ar(bus, effect);
 }).add;
 
 
 // audio in
 SynthDef(\AudioIn, {
 	arg out = 0;
-	Out.ar(out, SoundIn.ar([1, 2]))
+	Out.ar([out, out+1], SoundIn.ar([1, 2]))
 }).add;
 )
 
