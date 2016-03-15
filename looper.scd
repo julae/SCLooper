@@ -44,8 +44,11 @@ SynthDef(\pitchCake,{
 
 // audio in
 SynthDef(\AudioIn, {
-	arg out = 0;
-	Out.ar(out, SoundIn.ar([0, 1]))
+	arg out = 0, bus = 22, wet = 0.5;
+	var input;
+	input = SoundIn.ar([0, 1]);
+	Out.ar(out, input * (wet - 1));
+	Out.ar(bus, input * wet);
 }).add;
 
 // effect Synths
@@ -135,16 +138,37 @@ var numPieces, duration, offset, record, bufferLength, routine;
 ~recorder.value(~loop2, true, 20);
 
 // other input
+// pitchfollowing Synth
 ~kazoo = Synth(\pitchCake, [\out, 0, \bus, 20, \wet, 0.5]);
 ~kazoo.free;
 
+// audio (mic) input
 ~audioIn = Synth(\AudioIn);
 ~audioIn.free;
 
+
 // effects
+//reverb on kazoo Synth
 ~reverbKazoo =  Synth.after(1, \reverb, [\in, 20]);
 ~reverbKazoo.free;
 
+// control bus for wet signal in Kazoo synth
+~busKazooWet = Bus.control(s, 1);
+~busKazooWet.set(0.7);
+
+~kazoo.map(\wet, ~busKazooWet);
+
+//reverb on AudioIn
+~reverbAudioIn = Synth.after(1, \reverb, [\in, 22]);
+~reverbAudioIn.free;
+
+// control bus for wet signal in AudioIn;
+~busAudioInWet = Bus.control(s, 1);
+~audioIn.map(\wet, ~busAudioInWet);
+
+~busAudioInWet.set(0.5);
+
+// reverb on whole output
 ~reverbOut = Synth.after(1, \reverb, [\in, 0]);
 ~reverbOut.free;
 
