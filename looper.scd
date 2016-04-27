@@ -2,21 +2,27 @@
 //
 //
 //     helper Synths for recording to /  playing from buffer
+//     effect Synths
 //     recording function which records to buffer and chops up input
 //     pitch following Synth
 
 
+//s.options.device_("US-600 (Core Audio)");
+
+s.boot;
 s.makeGui;
+
 
 
 //synths
 (
 // record synths
 SynthDef(\recBuf,{
-	arg out = 0, bufnum = 0, offset = 0;
-	var in;
-	in = SoundIn.ar([0, 1]);
-	RecordBuf.ar(in, bufnum, offset: offset, preLevel: 1);
+	arg out = 0, bufnum = 0, offset = 0, duration = 1;
+	var in, envelope;
+	envelope = EnvGen.ar(Env.asr(0.05, 1, duration/2 - 0.05), doneAction: 2);
+	in = SoundIn.ar([0, 1]) * envelope;
+	RecordBuf.ar(in, bufnum, offset: offset, preLevel: 1, doneAction: 2);
 }).load(s);
 
 
@@ -28,21 +34,21 @@ SynthDef(\playBuf,{
 }).add;
 
 
-// kazoo synth
+// kazoo synth, effect bus default: 20
 SynthDef(\pitchCake,{
-	arg out, bus, wet = 0;
+	arg out, bus, wet = 0, ampMul = 10;
     var in, amp, sound, effect, freq, hasFreq;
 	in = SoundIn.ar([0, 1]);
     amp = Amplitude.kr(in, 0.05, 0.05, 0.5);
     # freq, hasFreq = Pitch.kr(in, ampThreshold: 0.02, median: 7);
-	sound = Mix.new(LFSaw.ar([0.333, 0.5] * freq) + LFPulse.ar([0.333, 0.5] * freq) * amp);
+	sound = Mix.new(LFSaw.ar([0.333, 0.5] * freq) + LFPulse.ar([0.333, 0.5] * freq) * amp * ampMul);
 	effect = HPF.ar(LinPan2.ar(LPF.ar(sound, SinOsc.kr(0.5, 0, 100, 400), SinOsc.kr(1, 0, 1))), 50);
 	Out.ar(out, effect * (1 - wet));
 	Out.ar(bus, effect * wet);
 }).add;
 
 
-// audio in
+// audio in, effect bus default: 22
 SynthDef(\AudioIn, {
 	arg out = 0, bus = 22, wet = 0.5;
 	var input;
@@ -89,7 +95,7 @@ var numPieces, duration, offset, record, bufferLength, routine;
 			for (0, numPieces, {
 				arg i;
 				offset = i * 2 * duration;
-				record = Synth(\recBuf, [\out, 0, \bufnum, buffer.bufnum, \offset, offset]);
+				record = Synth(\recBuf, [\out, 0, \bufnum, buffer.bufnum, \offset, offset, \duration, duration]);
 				(duration/44100).wait;
 				record.run(false);
 			});
@@ -110,16 +116,16 @@ var numPieces, duration, offset, record, bufferLength, routine;
 
 // global buffer variables
 (
+~beatLoop = Buffer.alloc(s, 44100 * 1.0, 2);
 ~loop1 = Buffer.alloc(s, 44100 * 8.0, 2);
 ~loop2 = Buffer.alloc(s, 44100 * 16.0, 2);
 )
-
 
 // play buffer; start before recording
 
 ~loop1Play = Synth(\playBuf, [\bufnum, ~loop1.bufnum, \out, 0]);
 ~loop2Play = Synth(\playBuf, [\bufnum, ~loop2.bufnum]);
-
+~beatloopPlay = Synth(\playBuf, [\bufnum, ~beatLoop.bufnum]);
 
 // loop control
 ~loop1Play.run(false);
@@ -128,18 +134,28 @@ var numPieces, duration, offset, record, bufferLength, routine;
 ~loop2Play.run(false);
 ~loop2Play.run(true);
 
+~beatLoopPlay.run(false);
+~beatLoopPlay.run(true);
+
 ~loop1Play.free;
 ~loop2Play.free;
+~beatLoopPlay.free;
+
 
 // record loops
 ~recorder.value(~loop1, true);
 ~recorder.value(~loop1, false);
 ~recorder.value(~loop2, true);
-~recorder.value(~loop2, true, 20);
+~recorder.value(~loop2, true);
+~recorder.value(~beatLoop, true);
+
+// plot a buffers
+~beatLoop.plot;
+
 
 // other input
 // pitchfollowing Synth
-~kazoo = Synth(\pitchCake, [\out, 0, \bus, 20, \wet, 0.5]);
+~kazoo = Synth(\pitchCake, [\out, 0, \bus, 20, \wet, 0]);
 ~kazoo.free;
 
 // audio (mic) input
@@ -152,11 +168,14 @@ var numPieces, duration, offset, record, bufferLength, routine;
 ~reverbKazoo =  Synth.after(1, \reverb, [\in, 20]);
 ~reverbKazoo.free;
 
-// control bus for wet signal in Kazoo synth
+// control busses for wet signal and amp in Kazoo synth
 ~busKazooWet = Bus.control(s, 1);
-~busKazooWet.set(0.7);
-
+~busKazooWet.set(0.9);
 ~kazoo.map(\wet, ~busKazooWet);
+
+~busKazooAmp = Bus.control(s, 1);
+~busKazooAmp.set(10);
+~kazoo.map(\ampMul, ~busKazooAmp);
 
 //reverb on AudioIn
 ~reverbAudioIn = Synth.after(1, \reverb, [\in, 22]);
@@ -184,3 +203,4 @@ s.stopRecording;
 // free buffer
 ~loop1.free;
 ~loop2.free;
+~beatLoop.free;
