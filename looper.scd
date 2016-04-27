@@ -20,7 +20,7 @@ s.makeGui;
 SynthDef(\recBuf,{
 	arg out = 0, bufnum = 0, offset = 0, duration = 1;
 	var in, envelope;
-	envelope = EnvGen.ar(Env.asr(0.05, 1, duration/2 - 0.05), doneAction: 2);
+	envelope = EnvGen.ar(Env.asr(0.05, 1, duration - 0.05), doneAction: 2);
 	in = SoundIn.ar([0, 1]) * envelope;
 	RecordBuf.ar(in, bufnum, offset: offset, preLevel: 1, doneAction: 2);
 }).load(s);
@@ -90,12 +90,11 @@ var numPieces, duration, offset, record, bufferLength, routine;
 
 		//duration of each sound snippet and break inbetween
 		duration = (0.5 * bufferLength / numPieces).floor;
-
 		routine = Routine{
 			for (0, numPieces, {
 				arg i;
 				offset = i * 2 * duration;
-				record = Synth(\recBuf, [\out, 0, \bufnum, buffer.bufnum, \offset, offset, \duration, duration]);
+				record = Synth(\recBuf, [\out, 0, \bufnum, buffer.bufnum, \offset, offset, \duration, duration/44100]);
 				(duration/44100).wait;
 				record.run(false);
 			});
@@ -151,7 +150,7 @@ var numPieces, duration, offset, record, bufferLength, routine;
 
 // plot a buffers
 ~beatLoop.plot;
-
+~loop1.plot;
 
 // other input
 // pitchfollowing Synth
