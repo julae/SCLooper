@@ -82,8 +82,6 @@ SynthDef(\reverb, {
 {
 arg bufnum, duration, offset, record_synth_symbol, in_bus = 0;
 var record;
-	"in bus".postln;
-	in_bus.postln;
 	record = Synth(record_synth_symbol, [\in_bus, in_bus, \bufnum, bufnum, \offset, offset, \duration, duration/44100]);
 	(duration/44100).wait;
 	record.run(false);
@@ -127,8 +125,6 @@ var record;
 ~beatLoop = Buffer.alloc(s, 44100 * 1.0, 2);
 ~loop1 = Buffer.alloc(s, 44100 * 8.0, 2);
 ~loop2 = Buffer.alloc(s, 44100 * 16.0, 2);
-
-~loop1.plot();
 
 // play buffer; start before recording
 
